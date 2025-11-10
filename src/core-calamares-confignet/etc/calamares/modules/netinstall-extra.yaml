@@ -1,0 +1,16 @@
+groups:
+  - name: "Optinal Applications"
+    description: "Choose additional software to install"
+    expanded: true 
+    selected: false
+    packages:
+      - name: "libreoffice-fresh"
+        description: "Full-featured office productivity suite"
+      - name: "gimp"
+        description: "Advanced image editor"
+      - name: "code"
+        description: "Visual Studio Code (vscode) editor"
+      - name: "obs-studio"
+        description: "Free, open source software for live streaming and recording"
+      - name: "telegram-desktop"
+        description: "Official Telegram Desktop client"

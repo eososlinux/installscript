@@ -1,0 +1,12 @@
+groups:
+  - name: "Drivers NVIDIA"
+    description: " driver NVIDIA."
+    expanded: true 
+    selected: false
+    packages:
+      - name: "nvidia"
+        description: "Proprietary NVIDIA driver for modern cards"
+      - name: "nvidia-utils"
+        description: "NVIDIA utilities and libraries"
+      - name: "nvidia-settings"
+        description: "NVIDIA graphical configuration tool"
