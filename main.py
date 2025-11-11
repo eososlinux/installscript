@@ -25,62 +25,60 @@ import subprocess
 
 from shutil import copy2, copytree
 from os.path import join, exists
-from libcalamares.utils import target_env_call # type: ignore
-from typing import cast
+from os import rename, makedirs
+from libcalamares.utils import target_env_call, target_env_process_output
 
 
 class ConfigController:
     def __init__(self):
-        # Forzar tipo para que Pylance no se queje (libcalamares es dinámico)
-        self.__root: str = cast(str, libcalamares.globalstorage.value("rootMountPoint"))  # type: ignore
-        self.__keyrings: list[str] = cast(list[str], libcalamares.job.configuration.get('keyrings', []))  # type: ignore
+        self.__root = libcalamares.globalstorage.value("rootMountPoint")
+        self.__keyrings = libcalamares.job.configuration.get('keyrings', [])
 
     @property
-    def root(self) -> str:
+    def root(self):
         return self.__root
 
     @property
-    def keyrings(self) -> list[str]:
+    def keyrings(self):
         return self.__keyrings
 
-    def init_keyring(self) -> None:
-        libcalamares.utils.target_env_call(["pacman-key", "--init"]) # type: ignore
+    def init_keyring(self):
+        target_env_call(["pacman-key", "--init"])
 
-    def populate_keyring(self) -> None:
-        libcalamares.utils.target_env_call(["pacman-key", "--populate"]) # type: ignore
+    def populate_keyring(self):
+        target_env_call(["pacman-key", "--populate"])
 
-    def terminate(self, proc: str) -> None:
-        libcalamares.utils.target_env_call(['killall', '-9', proc]) # type: ignore
+    def terminate(self, proc):
+        target_env_call(['killall', '-9', proc])
 
-    def remove_pkg(self, pkg: str, path: str):
-        full_path = join(self.root, path)
-        if exists(full_path):
-            print(f"[postcfg] Eliminando {pkg} porque existe {path}")
-            target_env_call(["pacman", "-Rns", "--noconfirm", pkg])
+    def copy_file(self, file):
+        if exists("/" + file):
+            copy2("/" + file, join(self.root, file))
 
-    def copy_file(self, file: str) -> None:
-        source_path = "/" + file
-        target_path = join(self.root, file)
-        if exists(source_path):
-            copy2(source_path, target_path)
+    def copy_folder(self, source, target):
+        if exists("/" + source):
+            copytree("/" + source, join(self.root, target), symlinks=True, dirs_exist_ok=True)
 
-    def copy_folder(self, source: str, target: str) -> None:
-        source_path = "/" + source
-        target_path = join(self.root, target)
-        if exists(source_path):
-            copytree(source_path, target_path, dirs_exist_ok=True)
+    def remove_pkg(self, pkg, path):
+        if exists(join(self.root, path)):
+            target_env_call(['pacman', '-R', '--noconfirm', pkg])
 
-    def umount(self, mp: str) -> None:
+    def umount(self, mp):
         subprocess.call(["umount", "-l", join(self.root, mp)])
 
-    def mount(self, mp: str) -> None:
+    def mount(self, mp):
         subprocess.call(["mount", "-B", "/" + mp, join(self.root, mp)])
 
-    def rmdir(self, path: str) -> None:
-        subprocess.call(["rm", "-Rf", join(self.root, path)])
+    def rmdir(self, dir):
+        subprocess.call(["rm", "-Rf", join(self.root, dir)])
 
-    def mkdir(self, path: str) -> None:
-        subprocess.call(["mkdir", "-p", join(self.root, path)])
+    def mkdir(self, dir):
+        subprocess.call(["mkdir", "-p", join(self.root, dir)])
+
+    def find_xdg_directory(self, user, type):
+        output = []
+        target_env_process_output(["su", "-lT", user, "xdg-user-dir", type], output)
+        return output[0].strip()
 
     def mark_orphans_as_explicit(self) -> None:
         """
@@ -100,16 +98,6 @@ class ConfigController:
         ])
         libcalamares.utils.debug("Marcado de paquetes completado.")
 
-    # def handle_ucode(self):
-    #     # Remove unneeded ucode
-    #     cpu_ucode = subprocess.getoutput("hwinfo --cpu | grep Vendor: -m1 | cut -d\'\"\' -f2")
-    #     if cpu_ucode == "AuthenticAMD":
-    #         self.remove_pkg("intel-ucode", "boot/intel-ucode.img")
-    #     elif cpu_ucode == "GenuineIntel":
-    #         self.remove_pkg("amd-ucode", "boot/amd-ucode.img")
-    #     else:
-    #         target_env_call(["mkinitcpio", "-P"])
-
     def setup_snapper(self):
         snapper_bin = join(self.root, "usr/bin/snapper")
 
@@ -119,38 +107,50 @@ class ConfigController:
 
         print("[postcfg] Configurando Snapper para /")
 
-        # 1. Crear configuración de Snapper (esto también genera .snapshots si el root es subvol Btrfs)
-        target_env_call(["snapper", "--no-dbus", "-c", "root", "create-config", "/"])
+        # 1. Crear configuración solo si no existe
+        snapper_cfg = join(self.root, "etc/snapper/configs/root")
+        if not exists(snapper_cfg):
+            print("[postcfg] Creando configuración de Snapper...")
+            target_env_call(["snapper", "--no-dbus", "-c", "root", "create-config", "/"])
+        else:
+            print("[postcfg] Configuracion de Snapper ya existe, se reutiliza.")
 
-        # 2. Asegurar que el subvolumen /.snapshots existe
+        # 2. Verificar que /.snapshots existe (no lo crea)
         snapshots_path = join(self.root, ".snapshots")
         if not exists(snapshots_path):
-            print("[postcfg] Creando subvolumen Btrfs /.snapshots")
-            target_env_call(["btrfs", "subvolume", "create", "/.snapshots"])
+            print("[postcfg] ERROR: /.snapshots no existe y debería haber sido creado por mount.conf")
+        else:
+            print("[postcfg] /.snapshots detectado correctamente")
 
-        # 3. Ajustar permisos
+        # 3. Ajustar permisos (recomendado para uso sin root)
         target_env_call(["chown", "-R", ":wheel", "/.snapshots"])
-        # target_env_call(["chmod", "750", "/.snapshots"])
 
-        # 4. Activar servicios (sin --now para evitar fallos en chroot)
+        # 4. Activar servicios/timers de Snapper y grub-btrfs
         target_env_call(["systemctl", "enable", "grub-btrfsd"])
         target_env_call(["systemctl", "enable", "snapper-timeline.timer"])
         target_env_call(["systemctl", "enable", "snapper-cleanup.timer"])
 
         print("[postcfg] Snapper configurado correctamente.")
 
-        # 5. Regenerar grub para agregar snapshots al menú
-        target_env_call(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
-
+        # 5. Generar grub.cfg dentro del sistema instalado
+        if exists(join(self.root, "usr/bin/grub-mkconfig")):
+            print("[postcfg] Generando grub.cfg ...")
+            target_env_call(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
 
 
     def run(self) -> None:
         self.init_keyring()
         self.populate_keyring()
 
-        # Actualizar base de datos si hay internet
-        if libcalamares.globalstorage.value("hasInternet"): # type: ignore
-            libcalamares.utils.target_env_call(["pacman", "-Sy", "--noconfirm"]) # type: ignore
+        # Remove unneeded ucode
+        cpu_ucode = subprocess.getoutput("hwinfo --cpu | awk -F'\"' '/Vendor:/ {print $2; exit}'")
+        if cpu_ucode == "AuthenticAMD":
+            self.remove_pkg("intel-ucode", "boot/intel-ucode.img")
+        elif cpu_ucode == "GenuineIntel":
+            self.remove_pkg("amd-ucode", "boot/amd-ucode.img")
+        else:
+            # Since no microcode packages were removed, dracut needs to be manually triggered
+            target_env_call(["mkinitcpio", "-P"])
 
         # Workaround for pacman-key bug
         # FS#45351 https://bugs.archlinux.org/task/45351
@@ -164,27 +164,16 @@ class ConfigController:
         if exists(join(self.root, "usr/bin/update-grub")):
             libcalamares.utils.target_env_call(["update-grub"]) # type: ignore
 
-        # Activar menú oculto automático en grub si soportado
-        if exists(join(self.root, "usr/bin/grub-set-bootflag")):
-            libcalamares.utils.target_env_call([ # type: ignore
-                "grub-editenv", "-", "set", "menu_auto_hide=1", "boot_success=1"
-            ])
-
         # Parche temporal con dd para evitar bugs en grub
-        if exists(join(self.root, "usr/bin/dd")):
-            libcalamares.utils.target_env_call([ # type: ignore
-                "sh", "-c",
-                "mkdir -p /tmp/vmlinuz-hack && mv /boot/vmlinuz-* /tmp/vmlinuz-hack/ && "
-                "find /tmp/vmlinuz-hack/ -maxdepth 1 -type f -exec sh -c 'dd if=\"$1\" of=\"/boot/$(basename \"$1\")\"' sh {} \\;"
-            ])
-
-        # Aquí podés agregar más acciones si necesitás
+        # if exists(join(self.root, "usr/bin/dd")):
+        #    libcalamares.utils.target_env_call([ # type: ignore
+        #        "sh", "-c",
+        #        "mkdir -p /tmp/vmlinuz-hack && mv /boot/vmlinuz-* /tmp/vmlinuz-hack/ && "
+        #        "find /tmp/vmlinuz-hack/ -maxdepth 1 -type f -exec sh -c 'dd if=\"$1\" of=\"/boot/$(basename \"$1\")\"' sh {} \\;"
+        #    ])
 
         # Nueva acción: marcar huérfanos como explícitos
         self.mark_orphans_as_explicit()
-
-        # Eliminar microcode innecesario
-        # self.handle_ucode()
 
         # Configurar Snapper si existe
         self.setup_snapper()
@@ -192,7 +181,9 @@ class ConfigController:
         return None
 
 
-def run() -> None:
+def run():
     """ Misc postinstall configurations """
+
     config = ConfigController()
+
     return config.run()
