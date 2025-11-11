@@ -100,50 +100,47 @@ class ConfigController:
         ])
         libcalamares.utils.debug("Marcado de paquetes completado.")
 
-    def handle_ucode(self):
-        cpu_ucode = subprocess.getoutput("hwinfo --cpu | grep Vendor: -m1 | cut -d\'\"\' -f2")
-        print(f"[postcfg] CPU detectado: {cpu}")
+    # def handle_ucode(self):
+    #     # Remove unneeded ucode
+    #     cpu_ucode = subprocess.getoutput("hwinfo --cpu | grep Vendor: -m1 | cut -d\'\"\' -f2")
+    #     if cpu_ucode == "AuthenticAMD":
+    #         self.remove_pkg("intel-ucode", "boot/intel-ucode.img")
+    #     elif cpu_ucode == "GenuineIntel":
+    #         self.remove_pkg("amd-ucode", "boot/amd-ucode.img")
+    #     else:
+    #         target_env_call(["mkinitcpio", "-P"])
 
-        if cpu == "AuthenticAMD":
-            self.remove_pkg("intel-ucode", "boot/intel-ucode.img")
-        elif cpu == "GenuineIntel":
-            self.remove_pkg("amd-ucode", "boot/amd-ucode.img")
-        else:
-            print("[postcfg] CPU no detectada, regenerando initramfs")
-            target_env_call(["mkinitcpio", "-P"])
+    def setup_snapper(self):
+        snapper_bin = join(self.root, "usr/bin/snapper")
 
+        if not exists(snapper_bin):
+            print("[postcfg] Snapper no está instalado, saltando...")
+            return
 
-        def setup_snapper(self):
-            snapper_bin = join(self.root, "usr/bin/snapper")
+        print("[postcfg] Configurando Snapper para /")
 
-            if not exists(snapper_bin):
-                print("[postcfg] Snapper no está instalado, saltando...")
-                return
+        # 1. Crear configuración de Snapper (esto también genera .snapshots si el root es subvol Btrfs)
+        target_env_call(["snapper", "--no-dbus", "-c", "root", "create-config", "/"])
 
-            print("[postcfg] Configurando Snapper para /")
+        # 2. Asegurar que el subvolumen /.snapshots existe
+        snapshots_path = join(self.root, ".snapshots")
+        if not exists(snapshots_path):
+            print("[postcfg] Creando subvolumen Btrfs /.snapshots")
+            target_env_call(["btrfs", "subvolume", "create", "/.snapshots"])
 
-            # 1. Crear configuración de Snapper (esto también genera .snapshots si el root es subvol Btrfs)
-            target_env_call(["snapper", "--no-dbus", "-c", "root", "create-config", "/"])
+        # 3. Ajustar permisos
+        target_env_call(["chown", "-R", ":wheel", "/.snapshots"])
+        # target_env_call(["chmod", "750", "/.snapshots"])
 
-            # 2. Asegurar que el subvolumen /.snapshots existe
-            snapshots_path = join(self.root, ".snapshots")
-            if not exists(snapshots_path):
-                print("[postcfg] Creando subvolumen Btrfs /.snapshots")
-                target_env_call(["btrfs", "subvolume", "create", "/.snapshots"])
+        # 4. Activar servicios (sin --now para evitar fallos en chroot)
+        target_env_call(["systemctl", "enable", "grub-btrfsd"])
+        target_env_call(["systemctl", "enable", "snapper-timeline.timer"])
+        target_env_call(["systemctl", "enable", "snapper-cleanup.timer"])
 
-            # 3. Ajustar permisos
-            target_env_call(["chown", "-R", ":wheel", "/.snapshots"])
-            target_env_call(["chmod", "750", "/.snapshots"])
+        print("[postcfg] Snapper configurado correctamente.")
 
-            # 4. Activar servicios (sin --now para evitar fallos en chroot)
-            target_env_call(["systemctl", "enable", "grub-btrfsd"])
-            target_env_call(["systemctl", "enable", "snapper-timeline.timer"])
-            target_env_call(["systemctl", "enable", "snapper-cleanup.timer"])
-
-            print("[postcfg] Snapper configurado correctamente.")
-
-            # 5. Regenerar grub para agregar snapshots al menú
-            target_env_call(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
+        # 5. Regenerar grub para agregar snapshots al menú
+        target_env_call(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
 
 
 
@@ -187,7 +184,7 @@ class ConfigController:
         self.mark_orphans_as_explicit()
 
         # Eliminar microcode innecesario
-        self.handle_ucode()
+        # self.handle_ucode()
 
         # Configurar Snapper si existe
         self.setup_snapper()
