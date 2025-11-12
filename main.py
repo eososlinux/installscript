@@ -82,60 +82,83 @@ class ConfigController:
 
     def mark_orphans_as_explicit(self) -> None:
         """
-        Marca todos los paquetes que pacman considera 'huérfanos' como explícitos.
-        Esto es necesario porque en el live ISO (airootfs) normalmente todos los
-        paquetes se marcan como dependencias (--asdeps), lo que provoca que tras
-        instalar, 'pacman -Qdtq' liste incluso el entorno gráfico completo.
+        Mark all packages that pacman considers 'orphaned' as explicit.
+
+        This is necessary because in the live ISO (airotfs),
+        normally all packages are marked as dependencies (--asdeps),
+        which causes 'pacman -Qdtq' to list even the entire graphical environment after installation.
 
         Comando usado:
             pacman -Qdtq | pacman -D --asexplicit -
         """
-        libcalamares.utils.debug("Marcando paquetes huérfanos como explícitos en el sistema instalado...")
+        libcalamares.utils.debug("Marking orphaned packages as explicit in the installed system...")
         libcalamares.utils.target_env_call([
             "sh", "-c",
             "orphans=$(pacman -Qdtq); "
             "if [ -n \"$orphans\" ]; then pacman -D --asexplicit $orphans; fi"
         ])
-        libcalamares.utils.debug("Marcado de paquetes completado.")
+        libcalamares.utils.debug("Package marking completed.")
 
     def setup_snapper(self):
         snapper_bin = join(self.root, "usr/bin/snapper")
 
         if not exists(snapper_bin):
-            print("[postcfg] Snapper no está instalado, saltando...")
-            return
+             print("[postcfg] Snapper no está instalado, saltando...")
+             return
 
         print("[postcfg] Configurando Snapper para /")
 
-        # 1. Crear configuración solo si no existe
-        snapper_cfg = join(self.root, "etc/snapper/configs/root")
-        if not exists(snapper_cfg):
-            print("[postcfg] Creando configuración de Snapper...")
-            target_env_call(["snapper", "--no-dbus", "-c", "root", "create-config", "/"])
-        else:
-            print("[postcfg] Configuracion de Snapper ya existe, se reutiliza.")
-
-        # 2. Verificar que /.snapshots existe (no lo crea)
         snapshots_path = join(self.root, ".snapshots")
-        if not exists(snapshots_path):
-            print("[postcfg] ERROR: /.snapshots no existe y debería haber sido creado por mount.conf")
-        else:
-            print("[postcfg] /.snapshots detectado correctamente")
+        snapper_cfg = join(self.root, "etc/snapper/configs/root")
+        fstab_path = join(self.root, "etc/fstab")
 
-        # 3. Ajustar permisos (recomendado para uso sin root)
+        #  /.snapshots está montado, desmontar
+        print("[postcfg] Desmontando /.snapshots si está montado...")
+        target_env_call(["umount", "-q", "/.snapshots"])
+
+        # existe como subvolumen, eliminarlo (solo si vacío)
+        if exists(snapshots_path):
+            print("[postcfg] Eliminando subvolumen /.snapshots existente...")
+            target_env_call(["btrfs", "subvolume", "delete", "/.snapshots"])
+
+        # Crear nueva configuración
+        print("[postcfg] Creando configuración nueva de Snapper para / ...")
+        target_env_call(["snapper", "--no-dbus", "-c", "root", "create-config", "/"])
+
+        # Montar nuevamente /.snapshots (según fstab)
+        print("[postcfg] Montando /.snapshots ...")
+        target_env_call(["mount", "-a"])
+
+        # Establecer subvolumen por defecto (opcional pero recomendado)
+        print("[postcfg] Estableciendo subvolumen por defecto ...")
+        target_env_call(["bash", "-c", "btrfs subvolume set-default $(btrfs subvolume list / | awk '/@/ {print $2; exit}') /"])
+
+        # Ajustar permisos
+        print("[postcfg] Ajustando permisos de /.snapshots ...")
         target_env_call(["chown", "-R", ":wheel", "/.snapshots"])
 
-        # 4. Activar servicios/timers de Snapper y grub-btrfs
+        # Añadir grupo wheel a la config de Snapper
+        if exists(snapper_cfg):
+            print("[postcfg] Añadiendo grupo wheel a la configuración de Snapper ...")
+            target_env_call([
+                "bash", "-c",
+                "sed -i 's/^ALLOW_GROUPS=\".*\"/ALLOW_GROUPS=\"wheel\"/' /etc/snapper/configs/root"
+           ])
+        else:
+           print("[postcfg] ERROR: configuración de Snapper no encontrada en /etc/snapper/configs/root")
+
+        # Activar timers y servicios
+        print("[postcfg] Activando servicios Snapper ...")
         target_env_call(["systemctl", "enable", "grub-btrfsd"])
         target_env_call(["systemctl", "enable", "snapper-timeline.timer"])
         target_env_call(["systemctl", "enable", "snapper-cleanup.timer"])
 
-        print("[postcfg] Snapper configurado correctamente.")
-
-        # 5. Generar grub.cfg dentro del sistema instalado
+        # Regenerar grub.cfg
         if exists(join(self.root, "usr/bin/grub-mkconfig")):
-            print("[postcfg] Generando grub.cfg ...")
+            print("[postcfg] Regenerando grub.cfg ...")
             target_env_call(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
+
+        print("[postcfg] Snapper configurado correctamente.")
 
 
     def run(self) -> None:
@@ -164,14 +187,6 @@ class ConfigController:
         if exists(join(self.root, "usr/bin/update-grub")):
             libcalamares.utils.target_env_call(["update-grub"]) # type: ignore
 
-        # Parche temporal con dd para evitar bugs en grub
-        # if exists(join(self.root, "usr/bin/dd")):
-        #    libcalamares.utils.target_env_call([ # type: ignore
-        #        "sh", "-c",
-        #        "mkdir -p /tmp/vmlinuz-hack && mv /boot/vmlinuz-* /tmp/vmlinuz-hack/ && "
-        #        "find /tmp/vmlinuz-hack/ -maxdepth 1 -type f -exec sh -c 'dd if=\"$1\" of=\"/boot/$(basename \"$1\")\"' sh {} \\;"
-        #    ])
-
         # Nueva acción: marcar huérfanos como explícitos
         self.mark_orphans_as_explicit()
 
@@ -187,3 +202,4 @@ def run():
     config = ConfigController()
 
     return config.run()
+
