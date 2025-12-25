@@ -1,6 +1,4 @@
-# installscript
-
-# bash script to install arch linux installation
+# Bash Script to Install Arch Linux
 
 # Clone this repository
 
