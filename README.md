@@ -13,8 +13,8 @@ Disk Configuration
 
 NVMe Drives
 If you are using an NVMe drive, use the following configuration:
-# ESP="${DISK}p1"
-# ROOT="${DISK}p2"
+ESP="${DISK}p1"
+ROOT="${DISK}p2"
 
 SATA / SSD / HDD Drives
 If you are NOT using an NVMe drive, comment the NVMe lines and use:
