@@ -13,8 +13,8 @@ sh install.sh
 NVMe Drives
 
 If you have an NVMe drive, uncomment the following lines and it should look like this:
-ESP="${DISK}p1"
-ROOT="${DISK}p2"
+# ESP="${DISK}p1"
+# ROOT="${DISK}p2"
 
 Please comment if it has an NVMe drive
 ESP="${DISK}1"
