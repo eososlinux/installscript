@@ -2,17 +2,17 @@
 
 # bash script to install arch linux installation
 
-clone this repository
+# Clone this repository
 
+```bash
+git clone <repository_url>
 cd /installscript
-
 chmod +x install.sh
-
 sh install.sh
 
-NVMe drives
-Uncomment, it should look like this
+NVMe Drives
 
+If you have an NVMe drive, uncomment the following lines and it should look like this:
 ESP="${DISK}p1"
 ROOT="${DISK}p2"
 
