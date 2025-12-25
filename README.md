@@ -3,7 +3,7 @@
 # Clone this repository
 
 ```bash
-git clone <repository_url>
+git clone <[repository_url](https://github.com/eososlinux/installscript.git)>
 cd /installscript
 chmod +x install.sh
 sh install.sh
