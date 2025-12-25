@@ -67,7 +67,7 @@ mount --mkdir "$ESP" /mnt/boot
 echo "--- Installing base system ---"
 pacman -Sy --needed --noconfirm archlinux-keyring reflector
 
-# reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 pacstrap -K /mnt base base-devel linux linux-firmware btrfs-progs efibootmgr \
     limine cryptsetup networkmanager reflector sudo vim intel-ucode \
