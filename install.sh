@@ -28,11 +28,13 @@ parted --script "$DISK" \
     set 1 esp on \
     mkpart Linux btrfs 2050MiB 100%
 
+# Uncomment if it has an NVMe drive
 # /dev/nvme0n1
 # ESP="${DISK}p1"
 # ROOT="${DISK}p2"
 
-# /dev/vda
+# Please comment if it has an NVMe drive
+# /dev/vda - /dev/sda
 ESP="${DISK}1"
 ROOT="${DISK}2"
 
@@ -47,17 +49,18 @@ echo -n "$LUKS_PASS" | cryptsetup open "$ROOT" root -
 mkfs.btrfs /dev/mapper/root
 mount /dev/mapper/root /mnt
 
-for sub in @ @home @var_log @var_cache @snapshots; do
+for sub in @ @home @var_log @var_cache; do
     btrfs subvolume create "/mnt/$sub"
 done
 
 umount /mnt
 
+# do not use mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
 mount -o compress=zstd:1,noatime,subvol=@ /dev/mapper/root /mnt
 mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_cache /dev/mapper/root /mnt/var/cache
-mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
+# mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
 mount --mkdir "$ESP" /mnt/boot
 
 # ========= INSTALL BASE SYSTEM =========
@@ -141,21 +144,6 @@ sleep 4
 for s in NetworkManager dhcpcd iwd systemd-networkd systemd-resolved bluetooth avahi-daemon firewalld acpid reflector.timer; do
     systemctl enable \$s
 done
-
-
-# # --- INSTALL YAY (AUR HELPER) ---
-# echo "--- Installing yay-bin ---"
-# pacman -Sy --noconfirm git base-devel
-# sudo -u $USERNAME bash -c '
-#     cd /home/$USERNAME
-#     git clone https://aur.archlinux.org/yay-bin.git
-#     cd yay-bin
-#     makepkg -si --noconfirm
-# '
-# # yay -S limine-snapper-sync limine-mkinitcpio-hook
-#
-# # ---------------- SNAPPER CONFIGURATION ----------------
-# pacman -Sy --noconfirm snapper snap-pac inotify-tools
 
 EOF
 
