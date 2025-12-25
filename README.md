@@ -9,3 +9,5 @@ chmod +x install.sh
 sh install.sh
 
 NVMe drives
+Uncomment, it should look like this
+
