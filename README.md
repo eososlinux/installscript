@@ -16,10 +16,9 @@ Uncomment, it should look like this
 ESP="${DISK}p1"
 ROOT="${DISK}p2"
 
-# Please comment if it has an NVMe drive
-# /dev/vda - /dev/sda
-# ESP="${DISK}1"
-# ROOT="${DISK}2"
+Please comment if it has an NVMe drive
+ESP="${DISK}1"
+ROOT="${DISK}2"
 
 Restart and remove the USB drive
 
