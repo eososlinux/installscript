@@ -5,7 +5,8 @@ echo "=== Arch Linux BIOS Legacy Installer (LUKS2 + BTRFS + Limine) ==="
 
 lsblk
 echo ""
-read -rp "Enter target disk (e.g. /dev/sda): " DISK
+
+read -rp "Enter target disk (e.g. /dev/sda or /dev/nvme0n1): " DISK
 read -rp "Enter username: " USERNAME
 read -srp "Enter user password: " USER_PASS; echo
 read -srp "Enter root password: " ROOT_PASS; echo
@@ -17,14 +18,27 @@ TIMEZONE=$(curl -fsSL https://ipapi.co/timezone || echo "UTC")
 echo "Using timezone: $TIMEZONE"
 
 # ========= PARTITIONING (MBR) =========
-echo "--- Partitioning $DISK (BIOS legacy) ---"
+echo "--- Partitioning $DISK (BIOS legacy / MBR) ---"
 sgdisk --zap-all "$DISK"
+
 parted --script "$DISK" \
     mklabel msdos \
-    mkpart primary 1MiB 100% \
-    set 1 boot on
+    mkpart primary ext4 1MiB 1025MiB \
+    set 1 boot on \
+    mkpart primary 1025MiB 100%
 
-ROOT="${DISK}1"
+# NVMe vs SATA naming
+if [[ "$DISK" =~ nvme ]]; then
+    BOOT="${DISK}p1"
+    ROOT="${DISK}p2"
+else
+    BOOT="${DISK}1"
+    ROOT="${DISK}2"
+fi
+
+# ========= FORMAT /BOOT =========
+echo "--- Formatting /boot (ext4) ---"
+mkfs.ext4 -F "$BOOT"
 
 # ========= LUKS + BTRFS =========
 echo "--- Setting up LUKS2 ---"
@@ -48,7 +62,9 @@ mount -o compress=zstd:1,noatime,subvol=@ /dev/mapper/root /mnt
 mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_cache /dev/mapper/root /mnt/var/cache
-mount --mkdir /mnt/boot
+
+mkdir -p /mnt/boot
+mount "$BOOT" /mnt/boot
 
 # ========= BASE INSTALL =========
 echo "--- Installing base system ---"
