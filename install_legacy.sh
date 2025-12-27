@@ -144,8 +144,10 @@ for s in NetworkManager bluetooth avahi-daemon firewalld acpid reflector.timer; 
 done
 EOF
 
-# ========= LIMINE BIOS INSTALL =========
+echo "--- Installing Limine BIOS stage ---"
+set +u
 limine bios-install "$DISK"
+set -u
 
 echo ""
 read -rp "Do you want to enter the system via arch-chroot before unmounting? [y/N]: " CHROOT_CONFIRM
