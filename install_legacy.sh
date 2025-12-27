@@ -59,21 +59,28 @@ mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/c
 mkdir -p /mnt/boot
 mount "$BOOT" /mnt/boot
 
+# ========= DETECCIÓN DE UCODE =========
+UCODE_PKG=""
+UCODE_LINE=""
+if grep -q "Intel" /proc/cpuinfo; then
+    UCODE_PKG="intel-ucode"
+    UCODE_LINE="module_path: boot():/intel-ucode.img"
+elif grep -q "AMD" /proc/cpuinfo; then
+    UCODE_PKG="amd-ucode"
+    UCODE_LINE="module_path: boot():/amd-ucode.img"
+fi
+
 # ========= BASE INSTALL =========
 pacman -Sy --noconfirm archlinux-keyring reflector
 reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 pacstrap -K /mnt \
     base base-devel linux linux-firmware \
-    btrfs-progs cryptsetup \
-    limine \
+    btrfs-progs cryptsetup limine $UCODE_PKG \
     networkmanager sudo vim git \
-    intel-ucode amd-ucode \
     pipewire pipewire-alsa pipewire-pulse wireplumber \
-    bluez bluez-utils \
-    firewalld acpid avahi \
-    rsync bash-completion duf \
-    zram-generator
+    bluez bluez-utils firewalld acpid avahi \
+    rsync bash-completion duf zram-generator
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
@@ -129,19 +136,19 @@ timeout: 3
 /Arch Linux
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
-    $UCODE
+    $UCODE_LINE
     module_path: boot():/initramfs-linux.img
     cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
 
 /Arch Linux (fallback)
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
-    $UCODE
+    $UCODE_LINE
     module_path: boot():/initramfs-linux-fallback.img
     cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
 LIMINECONF
 
-# Copiar archivos necesarios a la raíz de /boot para evitar errores de ruta
+# Copiar el binario de Limine al sector de arranque de la partición /boot
 cp /mnt/usr/share/limine/limine-bios.sys /mnt/boot/
 
 for s in NetworkManager bluetooth avahi-daemon firewalld acpid reflector.timer; do
