@@ -77,15 +77,11 @@ pacstrap -K /mnt \
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
-# ========= CHROOT =========
-arch-chroot /mnt \
-  TIMEZONE="$TIMEZONE" \
-  ROOT_PASS="$ROOT_PASS" \
-  USERNAME="$USERNAME" \
-  USER_PASS="$USER_PASS" \
-  /bin/bash <<'EOF'
-set -e
+# ========= CHROOT CONFIGURATION =========
+export TIMEZONE ROOT_PASS USERNAME USER_PASS
 
+arch-chroot /mnt /bin/bash -e <<EOF
+# --- TIMEZONE ---
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
 
@@ -93,11 +89,11 @@ sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
-echo "archlinux" > /etc/hostname
+echo "arch" > /etc/hostname
 cat <<HOSTS > /etc/hosts
 127.0.0.1 localhost
 ::1       localhost
-127.0.1.1 archlinux.localdomain archlinux
+127.0.1.1 arch.localdomain arch
 HOSTS
 
 echo "root:$ROOT_PASS" | chpasswd
