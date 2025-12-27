@@ -131,12 +131,7 @@ echo "vm.swappiness=180" > /etc/sysctl.d/99-zram.conf
 mkdir -p /boot/limine
 cp /usr/share/limine/limine-bios.sys /boot/limine/
 
-
-# instalar código temprano en el MBR
-limine bios-install "$DISK"
-
-
-LUKS_UUID=$(cryptsetup luksUUID "$ROOT")
+LUKS_UUID=\$(cryptsetup luksUUID /dev/mapper/root)
 
 cat <<LIMINECONF > /boot/limine.conf
 timeout: 3
@@ -160,6 +155,10 @@ for s in NetworkManager bluetooth avahi-daemon firewalld acpid reflector.timer; 
 done
 
 EOF
+
+# ========= INSTALL LIMINE BIOS STAGE =========
+echo "--- Installing Limine BIOS stage to disk ---"
+limine bios-install "$DISK"
 
 # ========= OPTIONAL INTERACTIVE CHROOT =========
 echo ""
