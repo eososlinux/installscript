@@ -119,25 +119,30 @@ echo "vm.swappiness=180" > /etc/sysctl.d/99-zram.conf
 
 # --- LIMINE BIOS FILES ---
 mkdir -p /boot/limine
-cp /usr/share/limine/limine-bios.sys /boot/limine/
+# cp /usr/share/limine/limine-bios.sys /boot/limine/
 
-LUKS_UUID=$(cryptsetup luksUUID /dev/mapper/root)
+LUKS_UUID=$(cryptsetup luksUUID "$ROOT")
 
-cat <<LIMINECONF > /boot/limine.conf
+cat <<LIMINECONF > /mnt/boot/limine.conf
 timeout: 3
 
 /Arch Linux
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
-    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
+    $UCODE
     module_path: boot():/initramfs-linux.img
+    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
 
 /Arch Linux (fallback)
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
-    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
+    $UCODE
     module_path: boot():/initramfs-linux-fallback.img
+    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
 LIMINECONF
+
+# Copiar archivos necesarios a la raíz de /boot para evitar errores de ruta
+cp /mnt/usr/share/limine/limine-bios.sys /mnt/boot/
 
 for s in NetworkManager bluetooth avahi-daemon firewalld acpid reflector.timer; do
     systemctl enable "$s"
@@ -145,9 +150,8 @@ done
 EOF
 
 echo "--- Installing Limine BIOS stage ---"
-set +u
-limine bios-install "$DISK"
-set -u
+# Usamos el binario que acabamos de instalar en el sistema destino
+/mnt/usr/bin/limine bios-install "$DISK"
 
 echo ""
 read -rp "Do you want to enter the system via arch-chroot before unmounting? [y/N]: " CHROOT_CONFIRM
