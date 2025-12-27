@@ -35,8 +35,16 @@ parted --script "$DISK" \
 
 # Please comment if it has an NVMe drive
 # /dev/vda - /dev/sda
-ESP="${DISK}1"
-ROOT="${DISK}2"
+# ESP="${DISK}1"
+# ROOT="${DISK}2"
+
+if [[ "$DISK" =~ nvme ]]; then
+    BOOT="${DISK}p1"
+    ROOT="${DISK}p2"
+else
+    BOOT="${DISK}1"
+    ROOT="${DISK}2"
+fi
 
 # ========= FORMAT ESP =========
 mkfs.fat -F 32 "$ESP"
@@ -49,7 +57,7 @@ echo -n "$LUKS_PASS" | cryptsetup open "$ROOT" root -
 mkfs.btrfs /dev/mapper/root
 mount /dev/mapper/root /mnt
 
-for sub in @ @home @var_log @var_cache; do
+for sub in @ @home @var_log @pkg; do
     btrfs subvolume create "/mnt/$sub"
 done
 
