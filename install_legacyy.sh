@@ -122,13 +122,14 @@ timeout: 5
     protocol: linux
     kernel_path: /vmlinuz-linux
     module_path: /initramfs-linux.img
-    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
+    cmdline: quiet cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
 
 /Arch Linux (fallback)
     protocol: linux
     kernel_path: /vmlinuz-linux
     module_path: /initramfs-linux-fallback.img
-    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
+    cmdline: quiet cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
+
 LIMINECONF
 
 # --- INSTALL BOOTLOADER ---
