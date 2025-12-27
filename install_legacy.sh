@@ -61,7 +61,7 @@ echo "--- Mounting subvolumes ---"
 mount -o compress=zstd:1,noatime,subvol=@ /dev/mapper/root /mnt
 mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
-mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache
+mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
 
 mkdir -p /mnt/boot
 mount "$BOOT" /mnt/boot
