@@ -25,9 +25,9 @@ sgdisk --zap-all "$DISK"
 
 parted --script "$DISK" \
     mklabel msdos \
-    mkpart primary ext4 1MiB 1025MiB \
+    mkpart primary fat32 1MiB 2048MiB \
     set 1 boot on \
-    mkpart primary 1025MiB 100%
+    mkpart primary 2048MiB 100%
 
 if [[ "$DISK" =~ nvme ]]; then
     BOOT="${DISK}p1"
@@ -125,7 +125,7 @@ timeout: 5
 LIMINECONF
 
 # --- INSTALL BOOTLOADER ---
-limine bios-install "$DISK"
+# limine bios-install "$DISK"
 
 # --- PACMAN HOOK (ARCHINSTALL STYLE) ---
 mkdir -p /etc/pacman.d/hooks
