@@ -106,26 +106,27 @@ mkinitcpio -P
 # --- LIMINE CONFIG (FIXED FOR SEPARATE BOOT) ---
 # Al tener partición /boot aparte, para Limine la raíz "/" es el contenido de esa partición.
 mkdir -p /boot/limine
+
 cat <<LIMINECONF > /boot/limine.conf
 timeout: 3
 
 /Arch Linux
     protocol: linux
     kernel_path: /vmlinuz-linux
-    \$UCODE_LINE
+    $UCODE_LINE
     module_path: /initramfs-linux.img
-    cmdline: cryptdevice=UUID=\$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
+    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
 
 /Arch Linux (fallback)
     protocol: linux
     kernel_path: /vmlinuz-linux
-    \$UCODE_LINE
+    $UCODE_LINE
     module_path: /initramfs-linux-fallback.img
-    cmdline: cryptdevice=UUID=\$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
+    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@
 LIMINECONF
 
-# Copiar el archivo Stage 3 a la raíz de la partición de arranque
 cp /usr/share/limine/limine-bios.sys /boot/limine/
+
 
 for s in NetworkManager bluetooth avahi-daemon firewalld acpid; do
     systemctl enable "\$s"
