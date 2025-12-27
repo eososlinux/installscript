@@ -96,6 +96,8 @@ cat <<HOSTS > /etc/hosts
 127.0.1.1 arch.localdomain arch
 HOSTS
 
+echo "KEYMAP=us" > /etc/vconsole.conf
+
 echo "root:$ROOT_PASS" | chpasswd
 useradd -m -G wheel -s /bin/bash "$USERNAME"
 echo "$USERNAME:$USER_PASS" | chpasswd
