@@ -149,6 +149,19 @@ EOF
 # ========= LIMINE BIOS INSTALL =========
 limine bios-install "$DISK"
 
+echo ""
+read -rp "Do you want to enter the system via arch-chroot before unmounting? [y/N]: " CHROOT_CONFIRM
+
+case "${CHROOT_CONFIRM,,}" in
+    y|yes)
+        echo "Entering interactive chroot. Type 'exit' to continue installation cleanup."
+        arch-chroot /mnt
+        ;;
+    *)
+        echo "Skipping interactive chroot."
+        ;;
+esac
+
 # ========= CLEANUP =========
 sync
 umount -R /mnt
