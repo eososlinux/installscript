@@ -166,7 +166,7 @@ LIMINECONF
 cp /usr/share/limine/limine-bios.sys /boot/
 
 # Servicios
-for s in NetworkManager bluetooth avahi-daemon firewalld acpid reflector.timer; do
+for s in NetworkManager bluetooth avahi-daemon firewalld acpid; do
     systemctl enable "\$s"
 done
 EOF
