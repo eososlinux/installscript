@@ -79,10 +79,16 @@ pacstrap -K /mnt \
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
+parted --script "$DISK" set 1 boot on
+
 # ========= CHROOT =========
 LUKS_UUID=$(cryptsetup luksUUID "$ROOT")
 
 arch-chroot /mnt /bin/bash -e <<EOF
+
+DISK_TARGET="$DISK"
+LUKS_ID="$LUKS_UUID"
+
 # --- TIME & LOCALE ---
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc
@@ -105,23 +111,22 @@ mkinitcpio -P
 # --- LIMINE (BIOS CONFIG) ---
 mkdir -p /boot/limine
 cp /usr/share/limine/limine-bios.sys /boot/limine/
+cp /usr/share/limine/limine-bios.sys /boot/
 
 cat <<LIMINECONF > /boot/limine/limine.conf
 timeout: 5
-
 /Arch Linux
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
     module_path: boot():/initramfs-linux.img
-    cmdline: cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rootflags=subvol=@ rw
+    cmdline: cryptdevice=UUID=\$LUKS_ID:root root=/dev/mapper/root rootflags=subvol=@ rw
 LIMINECONF
 
 # --- INSTALL TO MBR ---
 # Esto graba el cargador físicamente en el disco
-limine bios-install "$DISK"
+limine bios-install "\$DISK_TARGET"
 
 # --- PACMAN HOOK ---
-# Nota: \$DISK se expandirá al valor real (ej. /dev/sda) durante la creación
 mkdir -p /etc/pacman.d/hooks
 cat <<HOOK > /etc/pacman.d/hooks/99-limine.hook
 [Trigger]
@@ -131,9 +136,10 @@ Type = Package
 Target = limine
 
 [Action]
-Description = Re-deploying Limine to MBR ($DISK)...
+Description = Deploying Limine after upgrade...
 When = PostTransaction
-Exec = /bin/sh -c "limine bios-install $DISK && cp /usr/share/limine/limine-bios.sys /boot/limine/"
+# Aquí grabamos el valor real del disco directamente en el archivo
+Exec = /bin/sh -c "limine bios-install \$DISK_TARGET && cp /usr/share/limine/limine-bios.sys /boot/limine/"
 HOOK
 
 # --- SERVICES ---
