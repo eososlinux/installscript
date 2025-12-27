@@ -107,7 +107,7 @@ echo "$USERNAME:$USER_PASS" | chpasswd
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
 # --- MKINITCPIO ---
-sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block encrypt filesystems keyboard fsck)/' /etc/mkinitcpio.conf
+sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf keyboard block encrypt filesystems fsck)/' /etc/mkinitcpio.conf
 mkinitcpio -P
 
 # --- LIMINE (BIOS) ---
@@ -118,18 +118,10 @@ cp /usr/share/limine/limine-bios.sys /boot/limine/
 cat <<LIMINECONF > /boot/limine/limine.conf
 timeout: 5
 
-/Arch Linux
+/Arch Linux (linux)
     protocol: linux
-    kernel_path: /vmlinuz-linux
-    module_path: /initramfs-linux.img
-    cmdline: quiet cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
-
-/Arch Linux (fallback)
-    protocol: linux
-    kernel_path: /vmlinuz-linux
-    module_path: /initramfs-linux-fallback.img
-    cmdline: quiet cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
-
+    path: boot():/vmlinuz-linux
+    cmdline: quiet cryptdevice=PARTUUID=$LUKS_UUID:root root=/dev/mapper/root rootflags=subvol=@ rw rootfstype=btrfs
 LIMINECONF
 
 # --- INSTALL BOOTLOADER ---
@@ -157,12 +149,6 @@ for s in NetworkManager bluetooth avahi-daemon firewalld acpid; do
 done
 EOF
 
-# ========= OPTIONAL CHROOT =========
-echo ""
-read -rp "Enter chroot before unmounting? [y/N]: " CHROOT_CONFIRM
-if [[ "\${CHROOT_CONFIRM,,}" =~ ^(y|yes)$ ]]; then
-    arch-chroot /mnt
-fi
 
 # ========= CLEANUP =========
 sync
