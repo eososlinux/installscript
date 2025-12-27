@@ -67,7 +67,7 @@ umount /mnt
 mount -o compress=zstd:1,noatime,subvol=@ /dev/mapper/root /mnt
 mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
-mount --mkdir -o compress=zstd:1,noatime,subvol=@var_cache /dev/mapper/root /mnt/var/cache
+mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
 # mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
 mount --mkdir "$ESP" /mnt/boot
 
