@@ -51,7 +51,7 @@ mkfs.btrfs /dev/mapper/root
 mount /dev/mapper/root /mnt
 
 echo "--- Creating BTRFS subvolumes ---"
-for sub in @ @home @var_log @var_cache; do
+for sub in @ @home @var_log @pkg; do
     btrfs subvolume create "/mnt/$sub"
 done
 
