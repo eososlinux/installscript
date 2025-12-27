@@ -106,7 +106,7 @@ mkinitcpio -P
 # --- LIMINE CONFIG (FIXED FOR SEPARATE BOOT) ---
 # Al tener partición /boot aparte, para Limine la raíz "/" es el contenido de esa partición.
 mkdir -p /boot/limine
-cat <<LIMINECONF > /boot/limine/limine.conf
+cat <<LIMINECONF > /boot/limine.conf
 timeout: 3
 
 /Arch Linux
@@ -125,7 +125,7 @@ timeout: 3
 LIMINECONF
 
 # Copiar el archivo Stage 3 a la raíz de la partición de arranque
-cp /usr/share/limine/limine-bios.sys /boot/limine
+cp /usr/share/limine/limine-bios.sys /boot/limine/
 
 for s in NetworkManager bluetooth avahi-daemon firewalld acpid; do
     systemctl enable "\$s"
