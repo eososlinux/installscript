@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ==============================================================================
 # Arch Linux BIOS Legacy Installer (LUKS2 + BTRFS + Limine)
-# Archinstall-compatible
+#
 # ==============================================================================
 
 echo "=== Arch Linux BIOS Legacy Installer ==="
