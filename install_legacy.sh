@@ -127,10 +127,16 @@ ZRAMCONF
 
 echo "vm.swappiness=180" > /etc/sysctl.d/99-zram.conf
 
-# --- LIMINE BIOS INSTALL ---
-limine-install "$DISK"
+# --- LIMINE BIOS SETUP ---
+mkdir -p /boot/limine
+cp /usr/share/limine/limine-bios.sys /boot/limine/
 
-LUKS_UUID=\$(cryptsetup luksUUID "$ROOT")
+
+# instalar código temprano en el MBR
+limine bios-install "$DISK"
+
+
+LUKS_UUID=$(cryptsetup luksUUID "$ROOT")
 
 cat <<LIMINECONF > /boot/limine.conf
 timeout: 3
@@ -138,13 +144,13 @@ timeout: 3
 /Arch Linux
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
-    cmdline: quiet cryptdevice=UUID=\$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
+    cmdline: quiet cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
     module_path: boot():/initramfs-linux.img
 
 /Arch Linux (fallback)
     protocol: linux
     kernel_path: boot():/vmlinuz-linux
-    cmdline: quiet cryptdevice=UUID=\$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
+    cmdline: quiet cryptdevice=UUID=$LUKS_UUID:root root=/dev/mapper/root rw rootflags=subvol=@ rootfstype=btrfs
     module_path: boot():/initramfs-linux-fallback.img
 LIMINECONF
 
