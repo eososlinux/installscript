@@ -28,16 +28,6 @@ parted --script "$DISK" \
     set 1 esp on \
     mkpart Linux btrfs 2050MiB 100%
 
-# Uncomment if it has an NVMe drive
-# /dev/nvme0n1
-# ESP="${DISK}p1"
-# ROOT="${DISK}p2"
-
-# Please comment if it has an NVMe drive
-# /dev/vda - /dev/sda
-# ESP="${DISK}1"
-# ROOT="${DISK}2"
-
 if [[ "$DISK" =~ nvme ]]; then
     BOOT="${DISK}p1"
     ROOT="${DISK}p2"
