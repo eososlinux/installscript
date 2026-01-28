@@ -36,8 +36,10 @@ else
     ROOT="${DISK}2"
 fi
 
+ESP="$BOOT"
+
 # ========= FORMAT ESP =========
-mkfs.fat -F 32 "$BOOT"
+mkfs.fat -F 32 "$ESP"
 
 # ========= ENCRYPT + BTRFS =========
 echo "--- Setting up LUKS2 encrypted BTRFS partition ---"
@@ -59,7 +61,7 @@ mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
 mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
 # mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
-mount --mkdir "$BOOT" /mnt/boot
+mount --mkdir "$ESP" /mnt/boot
 
 # ========= INSTALL BASE SYSTEM =========
 echo "--- Installing base system ---"
