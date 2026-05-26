@@ -50,7 +50,7 @@ echo -n "$LUKS_PASS" | cryptsetup open "$ROOT" root -
 mkfs.btrfs /dev/mapper/root
 mount /dev/mapper/root /mnt
 
-for sub in @ @home @var_log @pkg @snapshots; do
+for sub in @ @home @var_log @pkg; do
   btrfs subvolume create "/mnt/$sub"
 done
 
@@ -61,7 +61,7 @@ mount -o compress=zstd:1,noatime,subvol=@ /dev/mapper/root /mnt
 mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
 mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
-mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
+# mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
 mount --mkdir "$ESP" /mnt/boot
 
 # ========= INSTALL BASE SYSTEM =========
