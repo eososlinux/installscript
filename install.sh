@@ -5,14 +5,15 @@ echo "=== Arch Linux Automated Installer (LUKS2 + BTRFS + Limine) ==="
 
 lsblk -f
 
-
-
 # ========= USER INPUT =========
 read -rp "Enter target disk (e.g. /dev/nvme0n1): " DISK
 read -rp "Enter username: " USERNAME
-read -srp "Enter user password: " USER_PASS; echo
-read -srp "Enter root password: " ROOT_PASS; echo
-read -srp "Enter LUKS encryption password: " LUKS_PASS; echo
+read -srp "Enter user password: " USER_PASS
+echo
+read -srp "Enter root password: " ROOT_PASS
+echo
+read -srp "Enter LUKS encryption password: " LUKS_PASS
+echo
 
 # ========= GEO-LOCATION TIMEZONE =========
 echo "Detecting timezone..."
@@ -23,17 +24,17 @@ echo "Using timezone: $TIMEZONE"
 echo "--- Partitioning $DISK ---"
 sgdisk --zap-all "$DISK"
 parted --script "$DISK" \
-    mklabel gpt \
-    mkpart ESP fat32 1MiB 2049MiB \
-    set 1 esp on \
-    mkpart Linux btrfs 2050MiB 100%
+  mklabel gpt \
+  mkpart ESP fat32 1MiB 2049MiB \
+  set 1 esp on \
+  mkpart Linux btrfs 2050MiB 100%
 
 if [[ "$DISK" =~ nvme ]]; then
-    BOOT="${DISK}p1"
-    ROOT="${DISK}p2"
+  BOOT="${DISK}p1"
+  ROOT="${DISK}p2"
 else
-    BOOT="${DISK}1"
-    ROOT="${DISK}2"
+  BOOT="${DISK}1"
+  ROOT="${DISK}2"
 fi
 
 ESP="$BOOT"
@@ -49,8 +50,8 @@ echo -n "$LUKS_PASS" | cryptsetup open "$ROOT" root -
 mkfs.btrfs /dev/mapper/root
 mount /dev/mapper/root /mnt
 
-for sub in @ @home @var_log @pkg; do
-    btrfs subvolume create "/mnt/$sub"
+for sub in @ @home @var_log @pkg @snapshots; do
+  btrfs subvolume create "/mnt/$sub"
 done
 
 umount /mnt
@@ -60,7 +61,7 @@ mount -o compress=zstd:1,noatime,subvol=@ /dev/mapper/root /mnt
 mount --mkdir -o compress=zstd:1,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount --mkdir -o compress=zstd:1,noatime,subvol=@var_log /dev/mapper/root /mnt/var/log
 mount --mkdir -o compress=zstd:1,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
-# mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
+mount --mkdir -o compress=zstd:1,noatime,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
 mount --mkdir "$ESP" /mnt/boot
 
 # ========= INSTALL BASE SYSTEM =========
@@ -70,12 +71,11 @@ pacman -Sy --needed --noconfirm archlinux-keyring reflector
 reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 pacstrap -K /mnt base base-devel linux linux-firmware btrfs-progs efibootmgr \
-    limine cryptsetup networkmanager reflector sudo vim intel-ucode \
-    dhcpcd iwd firewalld bluez bluez-utils acpid avahi rsync bash-completion \
-    pipewire pipewire-alsa pipewire-pulse wireplumber sof-firmware git duf
+  limine cryptsetup networkmanager reflector sudo vim intel-ucode \
+  dhcpcd iwd firewalld bluez bluez-utils acpid avahi rsync bash-completion \
+  pipewire pipewire-alsa pipewire-pulse wireplumber sof-firmware git duf
 
-genfstab -U /mnt >> /mnt/etc/fstab
-
+genfstab -U /mnt >>/mnt/etc/fstab
 
 sleep 5
 echo ""
@@ -89,10 +89,10 @@ ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc
 
 # --- LOCALE ---
-sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+sed -i 's/^#es_AR.UTF-8 UTF-8/es_AR.UTF-8 UTF-8/' /etc/locale.gen
 locale-gen
-echo "LANG=en_US.UTF-8" > /etc/locale.conf
-echo "KEYMAP=us" > /etc/vconsole.conf
+echo "LANG=es_AR.UTF-8" > /etc/locale.conf
+echo "KEYMAP=es" > /etc/vconsole.conf
 
 # --- HOSTNAME ---
 echo "arch" > /etc/hostname
